@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Surface Book 2 rotation and device mode integration for Omarchy
 
 from gi.repository import Gio, GLib
 
@@ -31,7 +32,9 @@ def on_properties_changed(connection, sender, path, interface, signal, parameter
 
     if name == INTERFACE and "DeviceMode" in changed:
         print(f"DTX mode: {changed['DeviceMode']}", flush=True)
-
+        global current_mode
+        current_mode = changed["DeviceMode"]
+        update_rotation(get_orientation())
 
 bus.signal_subscribe(
     BUS_NAME,
@@ -53,7 +56,7 @@ def on_sensor_changed(connection, sender, path, interface, signal, parameters):
 
     if name == SENSOR_INTERFACE and "AccelerometerOrientation" in changed:
         print(f"Orientation: {changed['AccelerometerOrientation']}", flush=True)
-
+        update_rotation(changed["AccelerometerOrientation"])
 
 bus.signal_subscribe(
     SENSOR_BUS,
@@ -83,6 +86,43 @@ def rotate(transform):
         f'hl.device({{name="ipts-045e:0021-touchscreen", transform={transform}}})'
     )
     subprocess.run(["hyprctl", "eval", command], check=True)
+
+ORIENTATIONS = {
+    "normal": 0,
+    "left-up": 1,
+    "bottom-up": 2,
+    "right-up": 3,
+}
+
+def get_orientation():
+    result = bus.call_sync(
+        SENSOR_BUS,
+        SENSOR_PATH,
+        "org.freedesktop.DBus.Properties",
+        "Get",
+        GLib.Variant("(ss)", (SENSOR_INTERFACE, "AccelerometerOrientation")),
+        GLib.VariantType.new("(v)"),
+        Gio.DBusCallFlags.NONE,
+        -1,
+        None,
+    )
+    return result.unpack()[0]
+
+current_mode = get_mode()
+current_transform = None
+
+
+def update_rotation(orientation):
+    global current_transform
+
+    transform = 0 if current_mode == "laptop" else ORIENTATIONS.get(orientation)
+
+    if transform is None or transform == current_transform:
+        return
+
+    rotate(transform)
+    current_transform = transform
+    print(f"Applied rotation: {transform}", flush=True)
 
 print(f"Initial DTX mode: {get_mode()}", flush=True)
 
