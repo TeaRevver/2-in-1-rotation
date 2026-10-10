@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Trevor Fraser
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+STATE_FILE="${XDG_RUNTIME_DIR}/2-in-1-keyboard-visible"
+
+if ! pgrep -x wvkbd-mobintl >/dev/null; then
+    rm -f "$STATE_FILE"
+    wvkbd-mobintl --hidden &
+    sleep 0.3
+fi
+
+if [[ -f "$STATE_FILE" ]]; then
+    pkill -USR1 -x wvkbd-mobintl
+    rm -f "$STATE_FILE"
+else
+    pkill -USR2 -x wvkbd-mobintl
+    touch "$STATE_FILE"
+fi

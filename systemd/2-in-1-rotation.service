@@ -1,0 +1,13 @@
+[Unit]
+Description=2-in-1 Rotation for Omarchy
+Wants=wayland-session-waitenv.service
+After=wayland-session-waitenv.service
+
+[Service]
+Type=simple
+ExecStart=%h/Projects/2-in-1-rotation/2-in-1-rotation.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target
